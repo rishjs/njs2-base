@@ -15,6 +15,7 @@ const jwt = require('../helper/jwt');
 class executor {
   constructor() {
     this.responseData = {};
+
   }
 
   async executeRequest(request) {
@@ -30,10 +31,10 @@ class executor {
         this.setResponse('ENCRYPTION_STATE_STRICTLY_ENABLED');
         throw new Error();
       }
-      const encryptionState = (ENCRYPTION_MODE == ENC_MODE.STRICT || (ENCRYPTION_MODE == ENC_MODE.OPTIONAL && encState == ENC_ENABLED));
+      this.encryptionState = (ENCRYPTION_MODE == ENC_MODE.STRICT || (ENCRYPTION_MODE == ENC_MODE.OPTIONAL && encState == ENC_ENABLED));
 
       // Set member variables
-      this.setMemberVariable('encryptionState', encryptionState);
+      this.setMemberVariable('encryptionState', this.encryptionState);
       if (lngKey) this.setMemberVariable('lng_key', lngKey);
 
       // Finalize methodName including custom route
@@ -86,7 +87,7 @@ class executor {
       let requestData = baseHelper.parseRequestData(request, isFileExpected);
 
       // If encyption is enabled, then decrypt the request data
-      if (!isFileExpected && encryptionState) {
+      if (!isFileExpected &&this.encryptionState) {
         requestData = decrypt(requestData.data);
         if (typeof requestData === 'string')
           requestData = JSON.parse(requestData);
@@ -109,21 +110,20 @@ class executor {
 
       // Initiate and Execute method
       this.responseData = await actionInstance.executeMethod();
-      // If encryption mode is enabled then encrypt the response data
-      if (encryptionState) {
-        // this.responseData = new URLSearchParams({data: encrypt(this.responseData)}).toString().replace("data=",'');
-        this.responseData = encrypt(this.responseData);
-      }
+      // // If encryption mode is enabled then encrypt the response data
+      // if (encryptionState) {
+      //   // this.responseData = new URLSearchParams({data: encrypt(this.responseData)}).toString().replace("data=",'');
+      //   this.responseData = encrypt(this.responseData);
+      // }
       const { responseString, responseOptions, packageName } = actionInstance.getResponseString();
-      const responseObj = this.getResponse(responseString, responseOptions, packageName);
-    
-      return responseObj;
+      const response = this.getResponse(responseString, responseOptions, packageName);
+      return response;
 
     } catch (e) {
       console.log("Exception caught", e);
-      const responseObj = this.getResponse(e === "NODE_VERSION_ERROR" ? e : "");
+      const response = this.getResponse(e === "NODE_VERSION_ERROR" ? e : "");
       if (process.env.MODE == "DEV" && e.message) this.setDebugMessage(e.message);
-      return responseObj;
+      return response;
     }
   }
 
@@ -203,6 +203,7 @@ class executor {
 
     const response = this.isValidResponseStructure(CUSTOM_RESPONSE_STRUCTURE);
     const responseApi = this.isValidResponseStructure(this.responseData);
+    let position;
     this.responseCode = RESP.responseCode;
     this.responseMessage = this.lng_key && RESP.responseMessage[this.lng_key]
       ? RESP.responseMessage[this.lng_key]
@@ -214,11 +215,16 @@ class executor {
 
     // If no response structure specified or response structure is invalid then return default response
     if(!response.valid) {
-    return {
-      responseCode: this.responseCode,
-      responseMessage: this.responseMessage,
-      responseData: this.responseData
-    };
+      // If encryption mode is enabled then encrypt the response data
+      if (this.encryptionState) {
+       // this.responseData = new URLSearchParams({data: encrypt(this.responseData)}).toString().replace("data=",'');
+       this.responseData = encrypt(this.responseData);
+     }
+     return {
+       responseCode: this.responseCode,
+       responseMessage: this.responseMessage,
+       responseData: this.responseData
+     };
     }
 
     // If response structure is array
@@ -230,10 +236,12 @@ class executor {
         } else if(response === "responseMessage") {
           responseArray.push(this.responseMessage);
         } else if(response === "responseData") {
-          responseArray.push(this.responseData);
+          const value=this.checkResponseDataStructure(responseApi,position=0);
+          responseArray.push(value);
         } else {
           // TODO: handling additional data
-          // responseArray.push()
+          const value=this.checkResponseDataStructure(responseApi,position=1);
+          responseArray.push(value);
         }
       }
       return responseArray;
@@ -242,7 +250,6 @@ class executor {
     //If response structure is object
     if(response.type === "object") {
       let responseObj = {};
-      let position;
       const responseStructureArray = Object.entries(CUSTOM_RESPONSE_STRUCTURE);
       for(const responseDetails of responseStructureArray) {
         const [ responseKey, responseValue ] = responseDetails;
@@ -251,29 +258,37 @@ class executor {
         } else if(responseKey === "responseMessage") {
           responseObj[responseValue.key] = this.responseMessage;
         } else if(responseKey === "responseData") {
-         this.assignValuesToObjects(responseObj,responseApi,responseValue,position=0);
+         const value=this.checkResponseDataStructure(responseApi,position=0);
+         responseObj[responseValue.key] = value;
         } else {
           // TODO: get additional data from API response else assign default value
-          this.assignValuesToObjects(responseObj,responseApi,responseValue,position=1);
+          const value=this.checkResponseDataStructure(responseApi,position=1);
+          responseObj[responseValue.key] = value;
         }
       }
       return responseObj;
     }
   }
 
-  //check API response structure and assign values
-  assignValuesToObjects(responseObj,responseApi,responseValue,position){
+  //check API responseData structure and assign values
+  checkResponseDataStructure(responseApi,position){
+    let value;
     if(responseApi.type === 'object')
     {
      const responseStructureArray = Object.entries(this.responseData);
      const [ Key, Value ] = responseStructureArray[position];
-      responseObj[responseValue.key] = Value;
+     value=Value;
     }
     else if(responseApi.type === 'array'){
-      responseObj[responseValue.key] = this.responseData[position];
+     value=this.responseData[position];
     }
+    // If encryption mode is enabled then encrypt the response data
+    if (this.encryptionState) {
+      // this.responseData = new URLSearchParams({data: encrypt(this.responseData)}).toString().replace("data=",'');
+      value = encrypt(value);
+    }
+    return value;
   }
-
   
   //validation for customResponseStructure
   isValidResponseStructure(CUSTOM_RESPONSE_STRUCTURE) {
