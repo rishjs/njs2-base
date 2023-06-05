@@ -15,7 +15,6 @@ const jwt = require('../helper/jwt');
 class executor {
   constructor() {
     this.responseData = {};
-
   }
 
   async executeRequest(request) {
@@ -110,11 +109,6 @@ class executor {
 
       // Initiate and Execute method
       this.responseData = await actionInstance.executeMethod();
-      // // If encryption mode is enabled then encrypt the response data
-      // if (encryptionState) {
-      //   // this.responseData = new URLSearchParams({data: encrypt(this.responseData)}).toString().replace("data=",'');
-      //   this.responseData = encrypt(this.responseData);
-      // }
       const { responseString, responseOptions, packageName } = actionInstance.getResponseString();
       const response = this.getResponse(responseString, responseOptions, packageName);
       return response;
@@ -201,7 +195,7 @@ class executor {
       RESP = RESP[this.responseString];
     }
 
-    const response = this.isValidResponseStructure(CUSTOM_RESPONSE_STRUCTURE);
+    const responseCustom = this.isValidResponseStructure(CUSTOM_RESPONSE_STRUCTURE);
     const responseApi = this.isValidResponseStructure(this.responseData);
     let position;
     this.responseCode = RESP.responseCode;
@@ -214,7 +208,7 @@ class executor {
     });
 
     // If no response structure specified or response structure is invalid then return default response
-    if(!response.valid) {
+    if(!responseCustom.valid) {
       // If encryption mode is enabled then encrypt the response data
       if (this.encryptionState) {
        // this.responseData = new URLSearchParams({data: encrypt(this.responseData)}).toString().replace("data=",'');
@@ -228,7 +222,7 @@ class executor {
     }
 
     // If response structure is array
-    if(response.type === "array") {
+    if(responseCustom.type === "array") {
       const responseArray = [];
       for(let response of CUSTOM_RESPONSE_STRUCTURE) {
         if(response === "responseCode") {
@@ -248,7 +242,7 @@ class executor {
     }
 
     //If response structure is object
-    if(response.type === "object") {
+    if(responseCustom.type === "object") {
       let responseObj = {};
       const responseStructureArray = Object.entries(CUSTOM_RESPONSE_STRUCTURE);
       for(const responseDetails of responseStructureArray) {
