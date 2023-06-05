@@ -18,7 +18,6 @@ class executor {
   }
 
   async executeRequest(request) {
-
     try {
       this.setResponse('UNKNOWN_ERROR');
 
@@ -110,29 +109,21 @@ class executor {
 
       // Initiate and Execute method
       this.responseData = await actionInstance.executeMethod();
-      const { responseString, responseOptions, packageName } = actionInstance.getResponseString();
-      const { responseCode, responseMessage } = this.getResponse(responseString, responseOptions, packageName);
-      
       // If encryption mode is enabled then encrypt the response data
       if (encryptionState) {
         // this.responseData = new URLSearchParams({data: encrypt(this.responseData)}).toString().replace("data=",'');
         this.responseData = encrypt(this.responseData);
       }
+      const { responseString, responseOptions, packageName } = actionInstance.getResponseString();
+      const responseObj = this.getResponse(responseString, responseOptions, packageName);
+    
+      return responseObj;
 
-      return {
-        responseCode,
-        responseMessage,
-        responseData: this.responseData
-      };
     } catch (e) {
       console.log("Exception caught", e);
-      const { responseCode, responseMessage } = this.getResponse(e === "NODE_VERSION_ERROR" ? e : "");
+      const responseObj = this.getResponse(e === "NODE_VERSION_ERROR" ? e : "");
       if (process.env.MODE == "DEV" && e.message) this.setDebugMessage(e.message);
-      return {
-        responseCode,
-        responseMessage,
-        responseData: {}
-      };
+      return responseObj;
     }
   }
 
@@ -191,6 +182,7 @@ class executor {
     }
     const BASE_RESPONSE = require(path.resolve(process.cwd(), `src/global/i18n/response.js`)).RESPONSE;
     const PROJECT_RESPONSE = require(`../i18n/response.js`).RESPONSE;
+    const CUSTOM_RESPONSE_STRUCTURE = require(path.resolve(process.cwd(), `src/config/customResponseStructure.json`));
 
     let RESP = { ...PROJECT_RESPONSE, ...BASE_RESPONSE };
 
@@ -209,21 +201,95 @@ class executor {
       RESP = RESP[this.responseString];
     }
 
+    const response = this.isValidResponseStructure(CUSTOM_RESPONSE_STRUCTURE);
+    const responseApi = this.isValidResponseStructure(this.responseData);
     this.responseCode = RESP.responseCode;
     this.responseMessage = this.lng_key && RESP.responseMessage[this.lng_key]
       ? RESP.responseMessage[this.lng_key]
       : RESP.responseMessage[DEFAULT_LNG_KEY];
-
     if (this.responseOptions)
-      Object.keys(this.responseOptions).map(keyName => {
-        this.responseMessage = this.responseMessage.replace(keyName, this.responseOptions[keyName]);
-      });
+    Object.keys(this.responseOptions).map(keyName => {
+      this.responseMessage = this.responseMessage.replace(keyName, this.responseOptions[keyName]);
+    });
 
+    // If no response structure specified or response structure is invalid then return default response
+    if(!response.valid) {
     return {
       responseCode: this.responseCode,
       responseMessage: this.responseMessage,
       responseData: this.responseData
     };
+    }
+
+    // If response structure is array
+    if(response.type === "array") {
+      const responseArray = [];
+      for(let response of CUSTOM_RESPONSE_STRUCTURE) {
+        if(response === "responseCode") {
+          responseArray.push(this.responseCode);
+        } else if(response === "responseMessage") {
+          responseArray.push(this.responseMessage);
+        } else if(response === "responseData") {
+          responseArray.push(this.responseData);
+        } else {
+          // TODO: handling additional data
+          // responseArray.push()
+        }
+      }
+      return responseArray;
+    }
+
+    //If response structure is object
+    if(response.type === "object") {
+      let responseObj = {};
+      let position;
+      const responseStructureArray = Object.entries(CUSTOM_RESPONSE_STRUCTURE);
+      for(const responseDetails of responseStructureArray) {
+        const [ responseKey, responseValue ] = responseDetails;
+        if(responseKey === "responseCode") {
+          responseObj[responseValue.key] = this.responseCode;
+        } else if(responseKey === "responseMessage") {
+          responseObj[responseValue.key] = this.responseMessage;
+        } else if(responseKey === "responseData") {
+         this.assignValuesToObjects(responseObj,responseApi,responseValue,position=0);
+        } else {
+          // TODO: get additional data from API response else assign default value
+          this.assignValuesToObjects(responseObj,responseApi,responseValue,position=1);
+        }
+      }
+      return responseObj;
+    }
+  }
+
+  //check API response structure and assign values
+  assignValuesToObjects(responseObj,responseApi,responseValue,position){
+    if(responseApi.type === 'object')
+    {
+     const responseStructureArray = Object.entries(this.responseData);
+     const [ Key, Value ] = responseStructureArray[position];
+      responseObj[responseValue.key] = Value;
+    }
+    else if(responseApi.type === 'array'){
+      responseObj[responseValue.key] = this.responseData[position];
+    }
+  }
+
+  
+  //validation for customResponseStructure
+  isValidResponseStructure(CUSTOM_RESPONSE_STRUCTURE) {
+    // Check if type Object and object is not empty
+    if(
+      CUSTOM_RESPONSE_STRUCTURE && 
+      Object.prototype.toString.call(CUSTOM_RESPONSE_STRUCTURE) === '[object Object]' && 
+      Object.keys(CUSTOM_RESPONSE_STRUCTURE).length !== 0
+    ) {
+      return { type: "object", valid: true }
+    }
+    // Check if type Array and array is not empty
+    if(Array.isArray(CUSTOM_RESPONSE_STRUCTURE) && CUSTOM_RESPONSE_STRUCTURE.length !== 0){
+      return { type: "array", valid: true };
+    }
+    return { valid: false }; 
   }
 }
 
