@@ -31,7 +31,7 @@ class executor {
         throw new Error();
       }
       this.encryptionState = (ENCRYPTION_MODE == ENC_MODE.STRICT || (ENCRYPTION_MODE == ENC_MODE.OPTIONAL && encState == ENC_ENABLED));
-
+      
       // Set member variables
       this.setMemberVariable('encryptionState', this.encryptionState);
       if (lngKey) this.setMemberVariable('lng_key', lngKey);
@@ -197,7 +197,6 @@ class executor {
 
     const responseCustom = this.isValidResponseStructure(CUSTOM_RESPONSE_STRUCTURE);
     const responseApi = this.isValidResponseStructure(this.responseData);
-    let position;
     this.responseCode = RESP.responseCode;
     this.responseMessage = this.lng_key && RESP.responseMessage[this.lng_key]
       ? RESP.responseMessage[this.lng_key]
@@ -230,11 +229,11 @@ class executor {
         } else if(response === "responseMessage") {
           responseArray.push(this.responseMessage);
         } else if(response === "responseData") {
-          const value=this.checkResponseDataStructure(responseApi,position=0);
+          const value=this.checkResponseDataStructure(responseApi,0);
           responseArray.push(value);
         } else {
           // TODO: handling additional data
-          const value=this.checkResponseDataStructure(responseApi,position=1);
+          const value=this.checkResponseDataStructure(responseApi,1);
           responseArray.push(value);
         }
       }
@@ -252,11 +251,11 @@ class executor {
         } else if(responseKey === "responseMessage") {
           responseObj[responseValue.key] = this.responseMessage;
         } else if(responseKey === "responseData") {
-         const value=this.checkResponseDataStructure(responseApi,position=0);
+         const value=this.checkResponseDataStructure(responseApi,0,responseValue.default);
          responseObj[responseValue.key] = value;
         } else {
           // TODO: get additional data from API response else assign default value
-          const value=this.checkResponseDataStructure(responseApi,position=1);
+          const value=this.checkResponseDataStructure(responseApi,1,responseValue.default);
           responseObj[responseValue.key] = value;
         }
       }
@@ -265,16 +264,24 @@ class executor {
   }
 
   //check API responseData structure and assign values
-  checkResponseDataStructure(responseApi,position){
+  checkResponseDataStructure(responseApi,position,defaultValue){
     let value;
     if(responseApi.type === 'object')
     {
      const responseStructureArray = Object.entries(this.responseData);
-     const [ Key, Value ] = responseStructureArray[position];
-     value=Value;
+     if(!responseStructureArray[position]){
+      value = defaultValue;
+     }else{
+      const [ Key, Value ] = responseStructureArray[position];
+      value=Value;
+     }
     }
     else if(responseApi.type === 'array'){
-     value=this.responseData[position];
+      if(!this.responseData[position]){
+        value=defaultValue;
+      }else{
+        value=this.responseData[position];
+      }
     }
     // If encryption mode is enabled then encrypt the response data
     if (this.encryptionState) {
@@ -292,11 +299,11 @@ class executor {
       Object.prototype.toString.call(CUSTOM_RESPONSE_STRUCTURE) === '[object Object]' && 
       Object.keys(CUSTOM_RESPONSE_STRUCTURE).length !== 0
     ) {
-      return { type: "object", valid: true }
+      return { type: "object", valid: true}
     }
     // Check if type Array and array is not empty
     if(Array.isArray(CUSTOM_RESPONSE_STRUCTURE) && CUSTOM_RESPONSE_STRUCTURE.length !== 0){
-      return { type: "array", valid: true };
+      return { type: "array", valid: true};
     }
     return { valid: false }; 
   }
