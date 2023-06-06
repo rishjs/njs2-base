@@ -23,7 +23,6 @@ class executor {
 
       // Initializng basic variables
       const { lng_key: lngKey, access_token: accessToken, enc_state: encState } = request.headers;
-
       // Decide encryption mode. And enforce enc_state to be true if encryption is Strict
       const { ENCRYPTION_MODE } = JSON.parse(process.env.ENCRYPTION);
       if (ENCRYPTION_MODE == ENC_MODE.STRICT && encState != ENC_ENABLED) {
@@ -40,6 +39,7 @@ class executor {
       let methodName = baseHelper.getMethodName(request.pathParameters);
       request.pathParameters = null;
       const { customMethodName, pathParameters } = baseHelper.getCustomRoute(methodName);
+      console.log(customMethodName,pathParameters);
       if (customMethodName) {
         request.pathParameters = pathParameters;
         methodName = customMethodName;
@@ -269,19 +269,10 @@ class executor {
     if(responseApi.type === 'object')
     {
      const responseStructureArray = Object.entries(this.responseData);
-     if(!responseStructureArray[position]){
-      value = defaultValue;
-     }else{
-      const [ Key, Value ] = responseStructureArray[position];
-      value=Value;
-     }
+     value=responseStructureArray[position]?responseStructureArray[position][1]:defaultValue;
     }
     else if(responseApi.type === 'array'){
-      if(!this.responseData[position]){
-        value=defaultValue;
-      }else{
-        value=this.responseData[position];
-      }
+     value=this.responseData[position]?this.responseData[position]:defaultValue;
     }
     // If encryption mode is enabled then encrypt the response data
     if (this.encryptionState) {
