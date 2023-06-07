@@ -4,6 +4,11 @@ const path = require("path");
 const httpRequest = require(path.join(process.cwd(), "src/config/route.json"));
 const baseMethodsPath = path.join(process.cwd(), "src/methods/");
 class baseHelper {
+
+  static getMethodNameFromParameter(requestData) {
+    return requestData.methodName?requestData.methodName:"";
+  }
+
   static getMethodName(pathParameters) {
     return pathParameters ? pathParameters.proxy : pathParameters;
   }

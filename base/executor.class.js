@@ -31,10 +31,10 @@ class executor {
         this.setResponse('ENCRYPTION_STATE_STRICTLY_ENABLED');
         throw new Error();
       }
-      const encryptionState = (ENCRYPTION_MODE == ENC_MODE.STRICT || (ENCRYPTION_MODE == ENC_MODE.OPTIONAL && encState == ENC_ENABLED));
+      this.encryptionState = (ENCRYPTION_MODE == ENC_MODE.STRICT || (ENCRYPTION_MODE == ENC_MODE.OPTIONAL && encState == ENC_ENABLED));
 
       // Set member variables
-      this.setMemberVariable('encryptionState', encryptionState);
+      this.setMemberVariable('encryptionState', this.encryptionState);
       if (lngKey) this.setMemberVariable('lng_key', lngKey);
 
       // Finalize methodName including custom route
@@ -44,6 +44,19 @@ class executor {
       if (customMethodName) {
         request.pathParameters = pathParameters;
         methodName = customMethodName;
+      }
+
+       let requestData = baseHelper.parseRequestData(request);
+       // If encyption is enabled, then decrypt the request 
+       if (this.encryptionState) {
+        requestData = decrypt(requestData.data);
+        if (typeof requestData === 'string')
+          requestData = JSON.parse(requestData);
+      }
+      requestData = requestData ? requestData : {};
+
+      if(!methodName) {
+        methodName = baseHelper.getMethodNameFromParameter(requestData);
       }
 
       // Resolve path from methodName
@@ -84,15 +97,6 @@ class executor {
       const parameterProcessor = new ParameterProcessor();
       const params = initInstance.getParameter();
       const isFileExpected = baseHelper.isFileExpected(params);
-      let requestData = baseHelper.parseRequestData(request, isFileExpected);
-
-      // If encyption is enabled, then decrypt the request data
-      if (!isFileExpected && encryptionState) {
-        requestData = decrypt(requestData.data);
-        if (typeof requestData === 'string')
-          requestData = JSON.parse(requestData);
-      }
-      requestData = requestData ? requestData : {};
 
       // Proccess and validate each parameters and set it as member variable
       for (let paramName in params) {
@@ -114,7 +118,7 @@ class executor {
       const { responseCode, responseMessage } = this.getResponse(responseString, responseOptions, packageName);
       
       // If encryption mode is enabled then encrypt the response data
-      if (encryptionState) {
+      if (this.encryptionState) {
         // this.responseData = new URLSearchParams({data: encrypt(this.responseData)}).toString().replace("data=",'');
         this.responseData = encrypt(this.responseData);
       }
