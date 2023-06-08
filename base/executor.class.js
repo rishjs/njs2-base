@@ -39,7 +39,6 @@ class executor {
       let methodName = baseHelper.getMethodName(request.pathParameters);
       request.pathParameters = null;
       const { customMethodName, pathParameters } = baseHelper.getCustomRoute(methodName);
-      console.log(customMethodName,pathParameters);
       if (customMethodName) {
         request.pathParameters = pathParameters;
         methodName = customMethodName;
@@ -196,7 +195,6 @@ class executor {
     }
 
     const responseCustom = this.isValidResponseStructure(CUSTOM_RESPONSE_STRUCTURE);
-    const responseApi = this.isValidResponseStructure(this.responseData);
     this.responseCode = RESP.responseCode;
     this.responseMessage = this.lng_key && RESP.responseMessage[this.lng_key]
       ? RESP.responseMessage[this.lng_key]
@@ -208,74 +206,71 @@ class executor {
 
     // If no response structure specified or response structure is invalid then return default response
     if(!responseCustom.valid) {
-      // If encryption mode is enabled then encrypt the response data
-      if (this.encryptionState) {
-       // this.responseData = new URLSearchParams({data: encrypt(this.responseData)}).toString().replace("data=",'');
-       this.responseData = encrypt(this.responseData);
-     }
      return {
        responseCode: this.responseCode,
        responseMessage: this.responseMessage,
-       responseData: this.responseData
+       responseData: this.encryptionCheck(this.responseData)
      };
     }
 
     // If response structure is array
     if(responseCustom.type === "array") {
-      const responseArray = [];
-      for(let response of CUSTOM_RESPONSE_STRUCTURE) {
-        if(response === "responseCode") {
-          responseArray.push(this.responseCode);
-        } else if(response === "responseMessage") {
-          responseArray.push(this.responseMessage);
-        } else if(response === "responseData") {
-          const value=this.checkResponseDataStructure(responseApi,0);
-          responseArray.push(value);
-        } else {
-          // TODO: handling additional data
-          const value=this.checkResponseDataStructure(responseApi,1);
-          responseArray.push(value);
-        }
-      }
-      return responseArray;
+      return this.assignValuesToArray(CUSTOM_RESPONSE_STRUCTURE);
     }
 
     //If response structure is object
     if(responseCustom.type === "object") {
-      let responseObj = {};
-      const responseStructureArray = Object.entries(CUSTOM_RESPONSE_STRUCTURE);
-      for(const responseDetails of responseStructureArray) {
-        const [ responseKey, responseValue ] = responseDetails;
-        if(responseKey === "responseCode") {
-          responseObj[responseValue.key] = this.responseCode;
-        } else if(responseKey === "responseMessage") {
-          responseObj[responseValue.key] = this.responseMessage;
-        } else if(responseKey === "responseData") {
-         const value=this.checkResponseDataStructure(responseApi,0,responseValue.default);
-         responseObj[responseValue.key] = value;
-        } else {
-          // TODO: get additional data from API response else assign default value
-          const value=this.checkResponseDataStructure(responseApi,1,responseValue.default);
-          responseObj[responseValue.key] = value;
-        }
-      }
-      return responseObj;
+      return this.assignValuesToObjects(CUSTOM_RESPONSE_STRUCTURE)
     }
   }
 
-  //check API responseData structure and assign values
-  checkResponseDataStructure(responseApi,position,defaultValue){
-    let value;
-    if(responseApi.type === 'object')
-    {
-     const responseStructureArray = Object.entries(this.responseData);
-     value=responseStructureArray[position]?responseStructureArray[position][1]:defaultValue;
+  assignValuesToArray(CUSTOM_RESPONSE_STRUCTURE){
+    let responseArray = [];
+    for(let response of CUSTOM_RESPONSE_STRUCTURE) {
+      if(response === "responseCode") {
+        responseArray.push(this.responseCode);
+      } else if(response === "responseMessage") {
+        responseArray.push(this.responseMessage);
+      } else if(response === "responseData") {
+        const value = this.responseData.responseData ? this.responseData.responseData : this.responseData;
+        responseArray.push(this.encryptionCheck(value));
+      } else {
+        if(this.responseData.responseData){
+          const responseArray = Object.entries(this.responseData);
+          const value=responseArray[1]?responseArray[1][1]:responseValue.default;
+          responseArray.push(this.encryptionCheck(value));
+        }
+      }
     }
-    else if(responseApi.type === 'array'){
-     value=this.responseData[position]?this.responseData[position]:defaultValue;
+    return responseArray;
+  }
+
+  assignValuesToObjects(CUSTOM_RESPONSE_STRUCTURE){
+    let responseObj = {};
+    const responseStructureArray = Object.entries(CUSTOM_RESPONSE_STRUCTURE);
+    for(const responseDetails of responseStructureArray) {
+      const [ responseKey, responseValue ] = responseDetails;
+      if(responseKey === "responseCode") {
+        responseObj[responseValue.key] = this.responseCode;
+      } else if(responseKey === "responseMessage") {
+        responseObj[responseValue.key] = this.responseMessage;
+      } else if(responseKey === "responseData") {
+        const value = this.responseData.responseData ? this.responseData.responseData : this.responseData;
+        responseObj[responseValue.key] = this.encryptionCheck(value);
+      } else {
+          if(this.responseData.responseData){
+            const responseArray = Object.entries(this.responseData);
+            const value=responseArray[1]?responseArray[1][1]:responseValue.default;
+            responseObj[responseValue.key] = this.encryptionCheck(value);
+          }
+      }
     }
-    // If encryption mode is enabled then encrypt the response data
-    if (this.encryptionState) {
+    return responseObj;
+  }
+
+  // If encryption mode is enabled then encrypt the response data
+  encryptionCheck(value){
+    if (value && this.encryptionState) {
       // this.responseData = new URLSearchParams({data: encrypt(this.responseData)}).toString().replace("data=",'');
       value = encrypt(value);
     }
@@ -288,12 +283,12 @@ class executor {
     if(
       CUSTOM_RESPONSE_STRUCTURE && 
       Object.prototype.toString.call(CUSTOM_RESPONSE_STRUCTURE) === '[object Object]' && 
-      Object.keys(CUSTOM_RESPONSE_STRUCTURE).length !== 0
+      Object.keys(CUSTOM_RESPONSE_STRUCTURE).length >= 3
     ) {
       return { type: "object", valid: true}
     }
     // Check if type Array and array is not empty
-    if(Array.isArray(CUSTOM_RESPONSE_STRUCTURE) && CUSTOM_RESPONSE_STRUCTURE.length !== 0){
+    if(Array.isArray(CUSTOM_RESPONSE_STRUCTURE) && CUSTOM_RESPONSE_STRUCTURE.length >= 3){
       return { type: "array", valid: true};
     }
     return { valid: false }; 
