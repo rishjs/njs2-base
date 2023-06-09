@@ -236,8 +236,8 @@ class executor {
         responseArray.push(this.encryptionCheck(value));
       } else {
         if(this.responseData.responseData){
-          const responseArray = Object.entries(this.responseData);
-          const value=responseArray[1]?responseArray[1][1]:responseValue.default;
+          const responseDataArray = Object.entries(this.responseData);
+          const value=responseDataArray[1]?responseDataArray[1][1]:"";
           responseArray.push(this.encryptionCheck(value));
         }
       }
@@ -259,8 +259,8 @@ class executor {
         responseObj[responseValue.key] = this.encryptionCheck(value);
       } else {
           if(this.responseData.responseData){
-            const responseArray = Object.entries(this.responseData);
-            const value=responseArray[1]?responseArray[1][1]:responseValue.default;
+            const responseDataArray = Object.entries(this.responseData);
+            const value=responseDataArray[1]?responseDataArray[1][1]:responseValue.default;
             responseObj[responseValue.key] = this.encryptionCheck(value);
           }
       }
