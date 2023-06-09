@@ -46,15 +46,16 @@ class executor {
         methodName = customMethodName;
       }
 
-       let requestData = baseHelper.parseRequestData(request);
-       // If encyption is enabled, then decrypt the request 
-       if (this.encryptionState) {
+      let requestData = baseHelper.parseRequestData(request);
+      // If encyption is enabled, then decrypt the request 
+      if (this.encryptionState) {
         requestData = decrypt(requestData.data);
         if (typeof requestData === 'string')
           requestData = JSON.parse(requestData);
       }
       requestData = requestData ? requestData : {};
 
+      //If methodName is not in request.pathParameter then check in requestData
       if(!methodName) {
         methodName = baseHelper.getMethodNameFromParameter(requestData);
       }
