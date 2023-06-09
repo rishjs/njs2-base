@@ -199,7 +199,7 @@ class executor {
     this.responseMessage = this.lng_key && RESP.responseMessage[this.lng_key]
       ? RESP.responseMessage[this.lng_key]
       : RESP.responseMessage[DEFAULT_LNG_KEY];
-    if (this.responseOptions)
+    if(this.responseOptions)
     Object.keys(this.responseOptions).map(keyName => {
       this.responseMessage = this.responseMessage.replace(keyName, this.responseOptions[keyName]);
     });
@@ -237,7 +237,7 @@ class executor {
       } else {
         if(this.responseData.responseData){
           const responseDataArray = Object.entries(this.responseData);
-          const value=responseDataArray[1]?responseDataArray[1][1]:"";
+          const value = responseDataArray[1] ? responseDataArray[1][1] : "";
           responseArray.push(this.encryptionCheck(value));
         }
       }
@@ -260,7 +260,7 @@ class executor {
       } else {
           if(this.responseData.responseData){
             const responseDataArray = Object.entries(this.responseData);
-            const value=responseDataArray[1]?responseDataArray[1][1]:responseValue.default;
+            const value = responseDataArray[1] ? responseDataArray[1][1] : responseValue.default;
             responseObj[responseValue.key] = this.encryptionCheck(value);
           }
       }
