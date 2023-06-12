@@ -213,12 +213,12 @@ class executor {
      };
     }
 
-    // If response structure is array
+    // If custom response structure is array
     if(responseCustom.type === "array") {
       return this.assignValuesToArray(CUSTOM_RESPONSE_STRUCTURE);
     }
 
-    //If response structure is object
+    //If custom response structure is object
     if(responseCustom.type === "object") {
       return this.assignValuesToObjects(CUSTOM_RESPONSE_STRUCTURE)
     }
@@ -237,7 +237,7 @@ class executor {
       } else {
         if(this.responseData.responseData){
           const responseDataArray = Object.entries(this.responseData);
-          const value = responseDataArray[1] ? responseDataArray[1][1] : "";
+          const value = responseDataArray[1] ? responseDataArray[1][1] : {};
           responseArray.push(this.encryptionCheck(value));
         }
       }
