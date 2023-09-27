@@ -185,7 +185,12 @@ class executor {
     const BASE_RESPONSE = require(path.resolve(process.cwd(), `src/global/i18n/response.js`)).RESPONSE;
     const PROJECT_RESPONSE = require(`../i18n/response.js`).RESPONSE;
 
-    const CUSTOM_RESPONSE_TEMPLATE = require(path.resolve(process.cwd(), `src/config/responseTemplate.json`));
+    let CUSTOM_RESPONSE_TEMPLATE;
+    try{
+      CUSTOM_RESPONSE_TEMPLATE = require(path.resolve(process.cwd(), `src/config/responseTemplate.json`));
+    }catch(error){
+      CUSTOM_RESPONSE_TEMPLATE = require(`../template/frameworkStructure/src/config/responseTemplate.json`);
+    }
 
     let RESP = { ...PROJECT_RESPONSE, ...BASE_RESPONSE };
 
