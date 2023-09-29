@@ -32,7 +32,7 @@ class executor {
         throw new Error();
       }
       const encryptionState = (ENCRYPTION_MODE == ENC_MODE.STRICT || (ENCRYPTION_MODE == ENC_MODE.OPTIONAL && encState == ENC_ENABLED));
-      
+
       // Set member variables
       this.setMemberVariable('encryptionState', this.encryptionState);
       if (lngKey) this.setMemberVariable('lng_key', lngKey);
@@ -75,7 +75,7 @@ class executor {
           this.setResponse(error.errorCode, {
             paramName: error.parameterName
           });
-          throw new Error(error.errorCode+' : '+error.parameterName);
+          throw new Error(error.errorCode + ' : ' + error.parameterName);
         }
         actionInstance.setMemberVariable('userObj', data);
       }
@@ -87,7 +87,7 @@ class executor {
       let requestData = baseHelper.parseRequestData(request, isFileExpected);
 
       // If encyption is enabled, then decrypt the request data
-      if (!isFileExpected &&this.encryptionState) {
+      if (!isFileExpected && this.encryptionState) {
         requestData = decrypt(requestData.data);
         if (typeof requestData === 'string')
           requestData = JSON.parse(requestData);
@@ -103,7 +103,7 @@ class executor {
           this.setResponse(error.errorCode, {
             paramName: error.parameterName
           });
-          throw new Error(error.errorCode+' : '+error.parameterName)
+          throw new Error(error.errorCode + ' : ' + error.parameterName)
         }
         actionInstance.setMemberVariable(paramName, value);
       }
@@ -186,9 +186,9 @@ class executor {
     const PROJECT_RESPONSE = require(`../i18n/response.js`).RESPONSE;
 
     let CUSTOM_RESPONSE_TEMPLATE;
-    try{
+    try {
       CUSTOM_RESPONSE_TEMPLATE = require(path.resolve(process.cwd(), `src/config/responseTemplate.json`));
-    }catch(error){
+    } catch (error) {
       CUSTOM_RESPONSE_TEMPLATE = require(`../template/frameworkStructure/src/config/responseTemplate.json`);
     }
 
@@ -206,52 +206,52 @@ class executor {
     if (!RESP[this.responseString]) {
       RESP = RESP["RESPONSE_CODE_NOT_FOUND"];
     } else {
-      RESP = {...RESP[this.responseString]};
+      RESP = { ...RESP[this.responseString] };
     }
 
     RESP.responseMessage = this.lng_key && RESP.responseMessage[this.lng_key]
       ? RESP.responseMessage[this.lng_key]
       : RESP.responseMessage[DEFAULT_LNG_KEY];
 
-     RESP.responseData = this.responseData;
+    RESP.responseData = this.responseData;
 
-    if(this.responseOptions)
-    Object.keys(this.responseOptions).map(keyName => {
-      RESP.responseMessage = RESP.responseMessage.replace(keyName, this.responseOptions[keyName]);
-    });
- 
-    return this.parseResponseData(CUSTOM_RESPONSE_TEMPLATE,RESP);      
+    if (this.responseOptions)
+      Object.keys(this.responseOptions).map(keyName => {
+        RESP.responseMessage = RESP.responseMessage.replace(keyName, this.responseOptions[keyName]);
+      });
+
+    return this.parseResponseData(CUSTOM_RESPONSE_TEMPLATE, RESP);
 
   }
 
-  parseResponseData(CUSTOM_RESPONSE_TEMPLATE,RESP){
-    try{
+  parseResponseData(CUSTOM_RESPONSE_TEMPLATE, RESP) {
+    try {
       Object.entries(RESP).forEach(array => {
-        const [key,value] = array;
-        if(typeof value === 'object'){
+        const [key, value] = array;
+        if (typeof value === 'object') {
           RESP[key] = "{" + JSON.stringify(value) + "}";
         }
       });
-      
+
       const compiled = _.template(typeof CUSTOM_RESPONSE_TEMPLATE === 'string' ? CUSTOM_RESPONSE_TEMPLATE : JSON.stringify(CUSTOM_RESPONSE_TEMPLATE));
 
       const resultTemplate = compiled(RESP);
 
       const matcherObj = {
-          '"{{': '{',
-          '}}"': '}',
-          '"{[': '[',
-          ']}"': ']'
+        '"{{': '{',
+        '}}"': '}',
+        '"{[': '[',
+        ']}"': ']'
       }
 
-      const replacedString = multiReplace(resultTemplate, matcherObj); 
+      const replacedString = multiReplace(resultTemplate, matcherObj);
 
       return typeof CUSTOM_RESPONSE_TEMPLATE === 'string' ? replacedString : JSON.parse(replacedString);
-    }catch(error){
-      throw new Error("parseResponseData Error:"+error);
+    } catch (error) {
+      throw new Error("parseResponseData Error:" + error);
     }
   }
-  
+
 }
 
 module.exports = executor;
